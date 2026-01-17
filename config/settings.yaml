@@ -1,0 +1,73 @@
+# Domain-Shift ML Platform Configuration
+
+application:
+  name: "Domain-Shift ML Platform"
+  version: "0.1.0"
+
+# Weather data collection settings
+data_collection:
+  # Default locations for weather data
+  locations:
+    - name: "San Francisco"
+      latitude: 37.7749
+      longitude: -122.4194
+    - name: "New York"
+      latitude: 40.7128
+      longitude: -74.0060
+    - name: "Chicago"
+      latitude: 41.8781
+      longitude: -87.6298
+
+  # Weather variables to collect from Open-Meteo
+  weather_variables:
+    - temperature_2m
+    - relative_humidity_2m
+    - precipitation
+    - wind_speed_10m
+    - wind_direction_10m
+    - surface_pressure
+    - cloud_cover
+
+  # Collection frequency in minutes
+  collection_interval_minutes: 60
+
+# Model configuration
+model:
+  name: "weather_predictor"
+  type: "random_forest"
+  target_variable: "temperature_2m"
+  feature_variables:
+    - relative_humidity_2m
+    - wind_speed_10m
+    - surface_pressure
+    - cloud_cover
+
+  # Training parameters
+  parameters:
+    n_estimators: 100
+    max_depth: 10
+    min_samples_split: 5
+    random_state: 42
+
+# Domain shift detection settings
+domain_shift:
+  # Statistical test to use (ks = Kolmogorov-Smirnov)
+  test_type: "ks"
+
+  # Threshold for triggering retraining
+  drift_threshold: 0.1
+
+  # Window size for comparing distributions (hours)
+  reference_window_hours: 168  # 1 week
+  current_window_hours: 24     # 1 day
+
+  # Minimum samples required
+  min_samples: 100
+
+  # Check frequency (minutes)
+  check_interval_minutes: 60
+
+# MLflow experiment tracking
+mlflow:
+  experiment_name: "domain-shift-weather-model"
+  tracking_uri: "${MLFLOW_TRACKING_URI}"

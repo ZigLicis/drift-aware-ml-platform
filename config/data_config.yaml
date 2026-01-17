@@ -1,0 +1,108 @@
+# Data Ingestion Configuration
+# Domain-Shift ML Platform
+
+# Open-Meteo API Configuration
+api:
+  base_url: "https://api.open-meteo.com/v1/forecast"
+  archive_url: "https://archive-api.open-meteo.com/v1/archive"
+  timeout: 30
+  retry_attempts: 3
+  retry_min_wait: 2
+  retry_max_wait: 30
+
+# Primary Location Configuration
+location:
+  name: "Washington DC"
+  latitude: 38.9072
+  longitude: -77.0369
+  timezone: "America/New_York"
+
+# Additional locations for multi-location support
+additional_locations:
+  - name: "New York City"
+    latitude: 40.7128
+    longitude: -74.0060
+    timezone: "America/New_York"
+  - name: "Los Angeles"
+    latitude: 34.0522
+    longitude: -118.2437
+    timezone: "America/Los_Angeles"
+  - name: "Chicago"
+    latitude: 41.8781
+    longitude: -87.6298
+    timezone: "America/Chicago"
+
+# Weather Features to Collect
+features:
+  hourly:
+    - temperature_2m
+    - relative_humidity_2m
+    - precipitation
+    - wind_speed_10m
+    - pressure_msl
+
+  # Optional additional features for future expansion
+  extended:
+    - dew_point_2m
+    - apparent_temperature
+    - cloud_cover
+    - wind_direction_10m
+    - wind_gusts_10m
+    - visibility
+    - uv_index
+
+# Data Ingestion Settings
+ingestion:
+  # Batch size for historical data fetch (hours)
+  batch_size: 168  # 1 week
+
+  # How far back to fetch for initial load (days)
+  lookback_days: 30
+
+  # Frequency for incremental updates (minutes)
+  update_interval_minutes: 60
+
+  # Hours of data to fetch in each incremental update
+  incremental_hours: 24
+
+  # Maximum records per batch insert
+  db_batch_size: 1000
+
+# Data Quality Settings
+data_quality:
+  # Minimum completeness threshold (0.0 to 1.0)
+  min_completeness: 0.95
+
+  # Maximum allowed null percentage per column
+  max_null_percentage: 5.0
+
+  # Temperature bounds for validation (°C)
+  temperature_bounds:
+    min: -60.0
+    max: 60.0
+
+  # Humidity bounds for validation (%)
+  humidity_bounds:
+    min: 0.0
+    max: 100.0
+
+  # Precipitation bounds for validation (mm)
+  precipitation_bounds:
+    min: 0.0
+    max: 500.0
+
+  # Wind speed bounds for validation (km/h)
+  wind_speed_bounds:
+    min: 0.0
+    max: 400.0
+
+  # Pressure bounds for validation (hPa)
+  pressure_bounds:
+    min: 870.0
+    max: 1084.0
+
+# Logging Configuration
+logging:
+  level: "INFO"
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+  include_timestamps: true
