@@ -29,41 +29,41 @@ During development, I observed that a model trained on 6 months of summer/fall d
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     Domain-Shift ML Platform                            │
-├─────────────────────────────────────────────────────────────────────────┤
-│                                                                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
-│  │  Open-Meteo │───▶│   Weather   │───▶│    Data     │                 │
-│  │     API     │    │   Client    │    │  Validator  │                 │
-│  └─────────────┘    └─────────────┘    └──────┬──────┘                 │
-│                                               │                         │
-│                                               ▼                         │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
-│  │  PostgreSQL │◀───│    Data     │◀───│    Data     │                 │
-│  │   Database  │    │   Storage   │    │ Transformer │                 │
-│  └──────┬──────┘    └─────────────┘    └─────────────┘                 │
-│         │                                                               │
-│         ▼                                                               │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐                 │
-│  │   Feature   │───▶│   Model     │───▶│   Model     │                 │
-│  │  Engineer   │    │  Trainer    │    │  Evaluator  │                 │
-│  └─────────────┘    └──────┬──────┘    └─────────────┘                 │
-│                            │                                            │
-│                            ▼                                            │
-│  ┌─────────────┐    ┌─────────────┐                                    │
-│  │   MLflow    │◀───│  Experiment │                                    │
-│  │   Server    │    │   Tracker   │                                    │
-│  └─────────────┘    └─────────────┘                                    │
-│                                                                         │
-└─────────────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────┐
+│                 Domain-Shift ML Platform                   │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │  Open-Meteo │───▶│   Weather   │───▶│    Data     │     │
+│  │     API     │    │   Client    │    │  Validator  │     │
+│  └─────────────┘    └─────────────┘    └──────┬──────┘     │
+│                                               │            │
+│                                               ▼            │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │  PostgreSQL │◀───│    Data     │◀───│    Data     │     │
+│  │   Database  │    │   Storage   │    │ Transformer │     │
+│  └──────┬──────┘    └─────────────┘    └─────────────┘     │
+│         │                                                  │
+│         ▼                                                  │
+│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
+│  │   Feature   │───▶│   Model     │───▶│   Model     │     │
+│  │  Engineer   │    │  Trainer    │    │  Evaluator  │     │
+│  └─────────────┘    └──────┬──────┘    └─────────────┘     │
+│                            │                               │
+│                            ▼                               │
+│  ┌─────────────┐    ┌─────────────┐                        │
+│  │   MLflow    │◀───│  Experiment │                        │
+│  │   Server    │    │   Tracker   │                        │
+│  └─────────────┘    └─────────────┘                        │
+│                                                            │
+└────────────────────────────────────────────────────────────┘
 ```
 
 **Data Flow:**
 ```
 Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → PostgreSQL
                                                                           ↓
-MLflow ← ModelTrainer ← FeatureEngineer ← Query historical data
+                 MLflow ← ModelTrainer ← FeatureEngineer ← Query historical data
 ```
 
 ---
@@ -290,7 +290,7 @@ pytest --cov=src tests/
 
 ## Project Status
 
-### Current State (Sprint 1 Complete)
+### Current State
 
 The foundation is complete with a working end-to-end pipeline:
 
@@ -304,7 +304,7 @@ The foundation is complete with a working end-to-end pipeline:
 
 ### Roadmap
 
-**Sprint 2 - Drift Detection & Automation**
+**TODO - Drift Detection & Automation**
 - Statistical drift detection (KS test, KL divergence, PSI)
 - Automated drift alerts and retraining triggers
 - Model promotion pipeline with automated testing
@@ -360,7 +360,6 @@ domain-shift-ml-platform/
 │   └── test_feature_engineering.py
 ├── docker-compose.yml          # Service orchestration
 ├── requirements.txt            # Python dependencies
-├── pytest.ini                  # Test configuration
 └── .env.example                # Environment template
 ```
 
