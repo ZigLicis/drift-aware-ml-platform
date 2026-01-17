@@ -330,8 +330,6 @@ domain-shift-ml-platform/
 │   ├── app/Dockerfile          # Application container
 │   ├── mlflow/Dockerfile       # MLflow server container
 │   └── postgres/init.sql       # Database schema initialization
-├── docs/
-│   └── SPRINT1_SUMMARY.md      # Detailed sprint documentation
 ├── scripts/
 │   ├── run_ingestion.py        # Data ingestion CLI
 │   ├── verify_ingestion.py     # Verification tool
