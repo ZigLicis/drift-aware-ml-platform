@@ -140,9 +140,9 @@ MLflow ← ModelTrainer ← FeatureEngineer ← Query historical data
 
 ### Quick Start
 
-1. **Clone and configure**
+1. **Clone and configure .env variables**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ZigLicis/drift-aware-ml-platform.git
    cd domain-shift-ml-platform
    cp .env.example .env
    ```
