@@ -33,11 +33,15 @@ EXPOSE 5000
 
 # Health check endpoint
 HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-    CMD curl -f http://localhost:5000/health || exit 1
+    CMD curl -f http://localhost:5001/health || exit 1
 
 # Start MLflow server (using shell form for env var expansion)
+# --serve-artifacts enables artifact proxying through the tracking server
+# --artifacts-destination specifies where artifacts are actually stored
 CMD mlflow server \
     --backend-store-uri "$MLFLOW_BACKEND_STORE_URI" \
     --default-artifact-root "$MLFLOW_DEFAULT_ARTIFACT_ROOT" \
+    --artifacts-destination "${MLFLOW_ARTIFACTS_DESTINATION:-/mlflow/artifacts}" \
+    --serve-artifacts \
     --host 0.0.0.0 \
-    --port 5000
+    --port 5001

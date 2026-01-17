@@ -32,17 +32,19 @@ services:
         condition: service_healthy
     environment:
       MLFLOW_BACKEND_STORE_URI: postgresql://${POSTGRES_USER:-dsml_user}:${POSTGRES_PASSWORD:-dsml_password}@postgres:5432/${MLFLOW_DB:-mlflow_db}
-      MLFLOW_DEFAULT_ARTIFACT_ROOT: /mlflow/artifacts
+      # Use mlflow-artifacts:/ scheme to force proxy usage
+      MLFLOW_DEFAULT_ARTIFACT_ROOT: mlflow-artifacts:/artifacts
+      MLFLOW_ARTIFACTS_DESTINATION: /mlflow/artifacts
       MLFLOW_HOST: 0.0.0.0
-      MLFLOW_PORT: 5000
+      MLFLOW_PORT: 5001
     volumes:
       - mlflow_artifacts:/mlflow/artifacts
     ports:
-      - "${MLFLOW_PORT:-5001}:5000"
+      - "${MLFLOW_PORT:-5001}:5001"
     networks:
       - dsml-network
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:5001/health"]
       interval: 30s
       timeout: 10s
       retries: 3

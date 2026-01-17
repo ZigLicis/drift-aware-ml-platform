@@ -38,8 +38,9 @@ features:
 
 training:
   # Temporal split configuration (most recent data for testing)
-  test_days: 7
-  validation_days: 3
+  # With ~200 days of data: 14 test + 7 val = 21 days, leaving ~180 for training
+  test_days: 14
+  validation_days: 7
   random_state: 42
 
   # Cross-validation for hyperparameter tuning
