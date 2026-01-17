@@ -140,10 +140,10 @@ class TestFetchLatest:
             assert len(df) > 0
 
             # Should have timestamp column
-            assert "timestamp" in df.columns or "time" in df.columns
+            assert "timestamp" in df.columns
 
-            # Should have weather measurements
-            weather_cols = ["temperature_2m", "relative_humidity_2m"]
+            # Should have weather measurements (normalized column names)
+            weather_cols = ["temperature", "humidity"]
             for col in weather_cols:
                 assert col in df.columns, f"Missing column: {col}"
 
@@ -153,10 +153,10 @@ class TestFetchLatest:
             df = client.fetch_latest(hours=6)
 
             # Temperature should be numeric
-            assert df["temperature_2m"].dtype in ["float64", "float32", "int64"]
+            assert df["temperature"].dtype in ["float64", "float32", "int64"]
 
             # Humidity should be numeric
-            assert df["relative_humidity_2m"].dtype in ["float64", "float32", "int64"]
+            assert df["humidity"].dtype in ["float64", "float32", "int64"]
 
 
 @pytest.mark.network
