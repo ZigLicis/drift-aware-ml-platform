@@ -356,6 +356,8 @@ domain-shift-ml-platform/
 │   ├── test_weather_client.py
 │   ├── test_validator.py
 │   └── test_feature_engineering.py
+├── .gitignore                  # .gitignore
+├── .dockerignore               # .dockerignore
 ├── docker-compose.yml          # Service orchestration
 ├── requirements.txt            # Python dependencies
 └── .env.example                # Environment template
