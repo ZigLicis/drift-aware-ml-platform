@@ -1,0 +1,92 @@
+# Model Configuration for Weather Prediction
+# Domain-Shift ML Platform
+
+model:
+  name: "weather-forecaster"
+  target: "target_next_day_max_temp"
+  prediction_horizon_hours: 24
+  description: "Predict maximum temperature in the next 24 hours"
+
+features:
+  # Base weather measurements from Open-Meteo API
+  weather:
+    - temperature_2m
+    - relative_humidity_2m
+    - precipitation
+    - wind_speed_10m
+    - surface_pressure
+
+  # Temporal features extracted from timestamp
+  temporal:
+    - hour_of_day
+    - day_of_week
+    - day_of_year
+    - is_weekend
+    - hour_sin
+    - hour_cos
+
+  # Lag feature configuration
+  lag_hours: [1, 6, 24]
+  lag_columns:
+    - temperature_2m
+    - relative_humidity_2m
+
+  # Rolling window configuration
+  rolling_windows: [6, 24]
+  rolling_columns:
+    - temperature_2m
+
+training:
+  # Temporal split configuration (most recent data for testing)
+  test_days: 7
+  validation_days: 3
+  random_state: 42
+
+  # Cross-validation for hyperparameter tuning
+  cv_folds: 5
+  cv_type: "time_series"  # TimeSeriesSplit, not random KFold
+
+baseline_model:
+  type: "ridge"
+  alpha: 1.0
+  fit_intercept: true
+  description: "Simple regularized linear model as baseline"
+
+# Alternative models for comparison
+models:
+  ridge:
+    type: "sklearn.linear_model.Ridge"
+    params:
+      alpha: [0.1, 1.0, 10.0]
+      fit_intercept: [true]
+
+  random_forest:
+    type: "sklearn.ensemble.RandomForestRegressor"
+    params:
+      n_estimators: [50, 100, 200]
+      max_depth: [5, 10, 20, null]
+      min_samples_split: [2, 5, 10]
+      random_state: [42]
+
+  gradient_boosting:
+    type: "sklearn.ensemble.GradientBoostingRegressor"
+    params:
+      n_estimators: [50, 100, 200]
+      max_depth: [3, 5, 7]
+      learning_rate: [0.01, 0.1, 0.2]
+      random_state: [42]
+
+# Evaluation metrics
+evaluation:
+  primary_metric: "rmse"
+  metrics:
+    - rmse    # Root Mean Squared Error
+    - mae     # Mean Absolute Error
+    - r2      # R-squared
+    - mape    # Mean Absolute Percentage Error
+
+# MLflow configuration
+mlflow:
+  experiment_name: "weather-prediction"
+  model_registry_name: "weather-forecaster"
+  tracking_uri: "${MLFLOW_TRACKING_URI:-http://localhost:5001}"
