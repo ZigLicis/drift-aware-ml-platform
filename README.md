@@ -105,7 +105,7 @@ MLflow ← ModelTrainer ← FeatureEngineer ← Query historical data
   - Structured logging with `structlog`
   - Configuration via YAML files and environment variables
 
-### Planned (Sprint 2)
+### TODO:
 
 - Domain shift detection (KS test, KL divergence, PSI)
 - Automated retraining triggers
