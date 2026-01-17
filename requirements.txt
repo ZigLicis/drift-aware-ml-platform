@@ -7,6 +7,10 @@ numpy==1.26.3
 pandas==2.1.4
 scipy==1.12.0
 
+# Visualization
+matplotlib==3.8.2
+seaborn==0.13.2
+
 # MLflow for experiment tracking
 mlflow==2.10.0
 
