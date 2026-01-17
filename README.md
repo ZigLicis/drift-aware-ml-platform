@@ -1,11 +1,8 @@
-<<<<<<< HEAD
-![Status](https://img.shields.io/badge/status-active%20development-yellow)
-=======
 # Domain-Shift ML Platform
 
 **An end-to-end weather prediction system with automated domain shift detection and model retraining.**
 
-![Development Status](https://img.shields.io/badge/status-active%20development-blue)
+![Development Status](https://img.shields.io/badge/status-active%20development-yellow)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![MLflow](https://img.shields.io/badge/mlflow-2.10.0-blue)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-15-blue)
@@ -22,11 +19,10 @@ Machine learning models degrade in production when the data distribution shifts 
 4. **Tracks experiments** and manages model versions through MLflow
 5. **Detects domain shift** and triggers automated retraining (planned)
 
-The project demonstrates production ML engineering practices: containerized infrastructure, reproducible experiments, proper train/test methodology, and systematic feature engineering.
 
 ### Why This Exists
 
-During development, we observed that a model trained on 6 months of summer/fall data achieved 0.95 R² on training data but **-62 R²** on winter test data—a catastrophic failure caused by seasonal domain shift. This project exists to detect and respond to such distribution changes automatically.
+During development, I observed that a model trained on 6 months of summer/fall data achieved 0.95 R² on training data but **-62 R²** on winter test data, a failure caused by a seasonal domain shift. This project exists to detect and respond to such distribution drifts automatically.
 
 ---
 
@@ -373,4 +369,3 @@ domain-shift-ml-platform/
 ## License
 
 This project is for demonstration and educational purposes.
->>>>>>> 5a52fe2 (README)
