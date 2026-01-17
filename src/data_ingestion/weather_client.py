@@ -81,6 +81,7 @@ class WeatherAPIClient:
 
     # Default configuration
     DEFAULT_BASE_URL = "https://api.open-meteo.com/v1/forecast"
+    DEFAULT_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
     DEFAULT_LATITUDE = 38.9072  # Washington DC
     DEFAULT_LONGITUDE = -77.0369
     DEFAULT_TIMEZONE = "America/New_York"
@@ -109,6 +110,7 @@ class WeatherAPIClient:
     def __init__(
         self,
         base_url: str | None = None,
+        archive_url: str | None = None,
         latitude: float | None = None,
         longitude: float | None = None,
         timezone: str | None = None,
@@ -120,6 +122,8 @@ class WeatherAPIClient:
 
         Args:
             base_url: Base URL for the API. Defaults to Open-Meteo forecast endpoint.
+            archive_url: URL for the archive API (historical data). Defaults to
+                Open-Meteo archive endpoint for data from 2020 onwards.
             latitude: Location latitude. Defaults to Washington DC.
             longitude: Location longitude. Defaults to Washington DC.
             timezone: Timezone for data. Defaults to America/New_York.
@@ -136,6 +140,7 @@ class WeatherAPIClient:
             ... )
         """
         self.base_url = base_url or self.DEFAULT_BASE_URL
+        self.archive_url = archive_url or self.DEFAULT_ARCHIVE_URL
         self.latitude = latitude or self.DEFAULT_LATITUDE
         self.longitude = longitude or self.DEFAULT_LONGITUDE
         self.timezone = timezone or self.DEFAULT_TIMEZONE
@@ -190,11 +195,14 @@ class WeatherAPIClient:
         before_sleep=before_sleep_log(logger, logging.WARNING),
         reraise=True,
     )
-    def _make_request(self, params: dict[str, Any]) -> dict[str, Any]:
+    def _make_request(
+        self, params: dict[str, Any], url: str | None = None
+    ) -> dict[str, Any]:
         """Make HTTP request to the API with retry logic.
 
         Args:
             params: Query parameters for the API request.
+            url: Optional URL to use. Defaults to self.base_url.
 
         Returns:
             Parsed JSON response from the API.
@@ -204,11 +212,12 @@ class WeatherAPIClient:
             WeatherAPIRateLimitError: If rate limit is exceeded.
             WeatherAPIResponseError: If response is invalid.
         """
+        request_url = url or self.base_url
         try:
-            logger.debug(f"Making API request with params: {params}")
+            logger.debug(f"Making API request to {request_url} with params: {params}")
 
             response = self._session.get(
-                self.base_url,
+                request_url,
                 params=params,
                 timeout=self.timeout,
             )
@@ -388,6 +397,10 @@ class WeatherAPIClient:
         specified date range. Data includes temperature, humidity, precipitation,
         wind speed, and pressure.
 
+        Automatically selects the appropriate API:
+        - Archive API (archive-api.open-meteo.com) for dates older than 5 days
+        - Forecast API (api.open-meteo.com) for recent dates
+
         Args:
             start_date: Start date in YYYY-MM-DD format.
             end_date: End date in YYYY-MM-DD format (inclusive).
@@ -431,17 +444,24 @@ class WeatherAPIClient:
                 f"end_date ({end_date}) must be >= start_date ({start_date})"
             )
 
+        # Use archive API for dates older than 5 days ago
+        cutoff = datetime.now() - timedelta(days=5)
+        use_archive = start_dt < cutoff
+        api_url = self.archive_url if use_archive else self.base_url
+        api_name = "archive" if use_archive else "forecast"
+
         logger.info(
-            f"Fetching historical data for {self.location_name}",
+            f"Fetching historical data for {self.location_name} using {api_name} API",
             extra={
                 "start_date": start_date,
                 "end_date": end_date,
                 "days": (end_dt - start_dt).days + 1,
+                "api": api_name,
             },
         )
 
         params = self._build_params(start_date, end_date)
-        response = self._make_request(params)
+        response = self._make_request(params, url=api_url)
         df = self._response_to_dataframe(response)
 
         logger.info(
