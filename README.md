@@ -22,7 +22,7 @@ Machine learning models degrade in production when the data distribution shifts 
 
 ### Why This Exists
 
-During development, I observed that a model trained on 6 months of summer/fall data achieved 0.95 R² on training data but **-62 R²** on winter test data, a failure caused by a seasonal domain shift. This project exists to detect and respond to such distribution drifts automatically.
+During model development, I observed that a model trained on 6 months of summer/fall data achieved 0.95 R² on training data but **-62 R²** on winter test data, a failure caused by a seasonal domain shift. This project exists to detect and respond to such distribution drifts automatically.
 
 ---
 
