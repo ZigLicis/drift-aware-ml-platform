@@ -107,8 +107,10 @@ Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → Po
 
 - **Drift Detection** (In Progress)
   - Statistical tests: PSI, KS test, Jensen-Shannon divergence, Chi-square, Wasserstein distance
+  - Reference data manager for storing/loading baseline distributions
   - Configurable thresholds with interpretation guidance
   - Edge case handling (NaN, empty arrays, constant values)
+  - Integration test validating summer→winter drift detection
 
 ### TODO:
 
@@ -127,7 +129,7 @@ Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → Po
 | Database | PostgreSQL 15 |
 | ML Tracking | MLflow 2.10.0 |
 | ML Framework | scikit-learn 1.4 |
-| Data Processing | pandas 2.1, NumPy 1.26 |
+| Data Processing | pandas 2.1, NumPy 1.26, SciPy 1.12 |
 | HTTP Client | requests + tenacity (retry) |
 | ORM | SQLAlchemy 2.0 |
 | Validation | Pydantic 2.5 |
@@ -309,13 +311,15 @@ The foundation is complete with a working end-to-end pipeline:
 
 ### Roadmap
 
-**TODO - Drift Detection & Automation**
-- Automated drift alerts and retraining triggers
-- Model promotion pipeline with automated testing
-- REST API for predictions (FastAPI)
+**Drift Detection & Automation** (In Progress)
+- [x] Statistical tests module (PSI, KS, JS divergence, Chi-square, Wasserstein)
+- [x] Reference data manager for baseline distributions
+- [x] Integration test validating drift detection
+- [ ] Drift detector class with MLflow integration
+- [ ] Automated drift alerts and retraining triggers
+- [ ] REST API for predictions (FastAPI)
 
 **Future**
-- Multi-location support
 - Monitoring dashboard
 - Scheduled ingestion jobs
 - A/B testing infrastructure
@@ -326,6 +330,8 @@ The foundation is complete with a working end-to-end pipeline:
 
 ```
 domain-shift-ml-platform/
+├── data/
+│   └── references/             # Reference profiles for drift detection
 ├── config/
 │   ├── settings.yaml           # Application settings
 │   ├── data_config.yaml        # Ingestion configuration
@@ -338,7 +344,8 @@ domain-shift-ml-platform/
 │   ├── run_ingestion.py        # Data ingestion CLI
 │   ├── verify_ingestion.py     # Verification tool
 │   ├── train_model.py          # Model training CLI
-│   └── evaluate_model.py       # Model evaluation CLI
+│   ├── evaluate_model.py       # Model evaluation CLI
+│   └── test_drift_day1.py      # Drift detection integration test
 ├── src/
 │   ├── data_ingestion/
 │   │   ├── weather_client.py   # Open-Meteo API client
@@ -347,7 +354,8 @@ domain-shift-ml-platform/
 │   │   ├── storage.py          # PostgreSQL persistence
 │   │   └── pipeline.py         # Pipeline orchestration
 │   ├── drift_detection/
-│   │   └── statistical_tests.py # PSI, KS, JS divergence, Chi-square, Wasserstein
+│   │   ├── statistical_tests.py  # PSI, KS, JS divergence, Chi-square, Wasserstein
+│   │   └── reference_manager.py  # Reference data storage and management
 │   ├── mlflow_utils/
 │   │   ├── tracking.py         # Experiment tracking
 │   │   └── registry.py         # Model registry management
@@ -361,7 +369,9 @@ domain-shift-ml-platform/
 │   ├── integration/            # End-to-end tests
 │   ├── test_weather_client.py
 │   ├── test_validator.py
-│   └── test_feature_engineering.py
+│   ├── test_feature_engineering.py 
+│   ├── test_statistical_tests.py   # Drift detection tests 
+│   └── test_reference_manager.py   # Reference manager tests
 ├── .gitignore                  # .gitignore
 ├── .dockerignore               # .dockerignore
 ├── docker-compose.yml          # Service orchestration
