@@ -105,7 +105,7 @@ Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → Po
   - Structured logging with `structlog`
   - Configuration via YAML files and environment variables
 
-- **Drift Detection** (Sprint 2 - In Progress)
+- **Drift Detection** (In Progress)
   - Statistical tests: PSI, KS test, Jensen-Shannon divergence, Chi-square, Wasserstein distance
   - Configurable thresholds with interpretation guidance
   - Edge case handling (NaN, empty arrays, constant values)
@@ -127,7 +127,7 @@ Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → Po
 | Database | PostgreSQL 15 |
 | ML Tracking | MLflow 2.10.0 |
 | ML Framework | scikit-learn 1.4 |
-| Data Processing | pandas 2.1, NumPy 1.26, SciPy 1.12 |
+| Data Processing | pandas 2.1, NumPy 1.26 |
 | HTTP Client | requests + tenacity (retry) |
 | ORM | SQLAlchemy 2.0 |
 | Validation | Pydantic 2.5 |
@@ -309,12 +309,10 @@ The foundation is complete with a working end-to-end pipeline:
 
 ### Roadmap
 
-**Sprint 2 - Drift Detection & Automation** (In Progress)
-- [x] Statistical tests module (PSI, KS, JS divergence, Chi-square, Wasserstein)
-- [ ] Drift detector class with reference window management
-- [ ] Automated drift alerts and retraining triggers
-- [ ] Model promotion pipeline with automated testing
-- [ ] REST API for predictions (FastAPI)
+**TODO - Drift Detection & Automation**
+- Automated drift alerts and retraining triggers
+- Model promotion pipeline with automated testing
+- REST API for predictions (FastAPI)
 
 **Future**
 - Multi-location support
@@ -363,8 +361,7 @@ domain-shift-ml-platform/
 │   ├── integration/            # End-to-end tests
 │   ├── test_weather_client.py
 │   ├── test_validator.py
-│   ├── test_feature_engineering.py
-│   └── test_statistical_tests.py  # Drift detection tests (41 tests)
+│   └── test_feature_engineering.py
 ├── .gitignore                  # .gitignore
 ├── .dockerignore               # .dockerignore
 ├── docker-compose.yml          # Service orchestration
