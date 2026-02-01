@@ -1,0 +1,100 @@
+# Drift Detection Configuration
+# ==============================
+# Configuration for domain shift detection and monitoring.
+# These settings control how drift is detected and when alerts are triggered.
+
+drift_detection:
+  # Primary detection method
+  # Options: "psi" (Population Stability Index), "ks" (Kolmogorov-Smirnov), "js" (Jensen-Shannon)
+  primary_method: "psi"
+
+  # PSI (Population Stability Index) thresholds
+  # PSI measures distribution shift between reference and current data
+  # Industry standard guidelines:
+  #   < 0.1: No significant shift
+  #   0.1 - 0.2: Moderate shift, monitor closely
+  #   > 0.2: Significant shift, action required
+  psi_thresholds:
+    low: 0.1         # Minor drift, continue monitoring
+    moderate: 0.15   # Notable drift, investigate
+    significant: 0.2 # Substantial drift, plan remediation
+    severe: 0.5      # Critical drift, immediate action
+
+  # KS-test (Kolmogorov-Smirnov) significance level
+  # P-value below this threshold indicates statistically significant drift
+  ks_significance: 0.05
+
+  # JS (Jensen-Shannon) divergence thresholds
+  # JS divergence is bounded [0, 1], with 0 being identical distributions
+  js_thresholds:
+    low: 0.05
+    moderate: 0.1
+    significant: 0.2
+    severe: 0.4
+
+  # Overall drift decision criteria
+  detection:
+    # What percentage of features must show drift to declare overall drift
+    # 0.3 = 30% of monitored features need to drift for system-level alert
+    features_drifted_threshold: 0.3
+
+    # Minimum samples needed for reliable drift detection
+    # Below this threshold, results should be treated as unreliable
+    min_samples: 50
+
+    # Number of consecutive drift detections required before alerting
+    # Helps avoid false alarms from temporary fluctuations
+    # 1 = alert immediately on first detection
+    consecutive_checks_required: 1
+
+  # Monitoring windows and scheduling
+  monitoring:
+    # Size of the current data window in hours
+    # 168 hours = 7 days
+    window_size_hours: 168
+
+    # How often to run drift checks
+    # Options: "hourly", "daily", "weekly"
+    comparison_frequency: "daily"
+
+  # Features to monitor
+  # Empty list means all features used in training will be monitored
+  # Specify feature names to monitor only specific features
+  monitored_features: []
+  # Example:
+  # monitored_features:
+  #   - temperature_2m
+  #   - relative_humidity_2m
+  #   - precipitation
+  #   - wind_speed_10m
+  #   - surface_pressure
+
+# Alerting configuration (for future implementation)
+alerting:
+  enabled: false
+
+  # Alert channels (future implementation)
+  channels:
+    email:
+      enabled: false
+      recipients: []
+    slack:
+      enabled: false
+      webhook_url: ""
+
+  # Minimum severity level to trigger alert
+  # Options: "low", "moderate", "significant", "severe"
+  min_severity: "significant"
+
+# MLflow integration
+mlflow:
+  # Log drift reports as MLflow runs
+  log_drift_reports: true
+
+  # Experiment name for drift tracking
+  experiment_name: "drift-monitoring"
+
+  # Tags to add to drift tracking runs
+  tags:
+    project: "domain-shift-ml-platform"
+    component: "drift-detection"
