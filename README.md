@@ -375,6 +375,7 @@ domain-shift-ml-platform/
 ├── config/
 │   ├── settings.yaml           # Application settings
 │   ├── data_config.yaml        # Ingestion configuration
+│   ├── drift_config.yaml       # Drift thresholds configuration
 │   └── model_config.yaml       # Model training configuration
 ├── docker/
 │   ├── app/Dockerfile          # Application container
