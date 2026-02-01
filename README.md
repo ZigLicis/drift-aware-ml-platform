@@ -105,16 +105,19 @@ Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → Po
   - Structured logging with `structlog`
   - Configuration via YAML files and environment variables
 
-- **Drift Detection** (In Progress)
+- **Drift Detection Tests**
   - Statistical tests: PSI, KS test, Jensen-Shannon divergence, Chi-square, Wasserstein distance
   - Reference data manager for storing/loading baseline distributions
-  - Configurable thresholds with interpretation guidance
-  - Edge case handling (NaN, empty arrays, constant values)
+
+  - **Drift Detector** with severity classification and recommendations
+  - Configurable thresholds via `config/drift_config.yaml`
+  - `DriftReport` with human-readable summaries and JSON serialization
+  - Edge case handling (NaN, empty arrays, constant values, insufficient samples)
   - Integration test validating summer→winter drift detection
 
 ### TODO:
 
-- Drift detector class with MLflow integration
+- MLflow logging for drift reports
 - Automated retraining triggers
 - FastAPI REST endpoints for predictions
 - Model performance monitoring dashboard
@@ -275,6 +278,41 @@ python scripts/verify_ingestion.py --check-db
 python scripts/verify_ingestion.py --check-mlflow
 ```
 
+### Drift Detection
+
+```python
+from src.drift_detection import DriftDetector, ReferenceManager
+import pandas as pd
+
+# Initialize components
+manager = ReferenceManager(storage_path="data/references")
+detector = DriftDetector(reference_manager=manager)
+
+# Create reference from training data
+profiles = manager.create_reference_from_dataframe(
+    df=training_df,
+    feature_columns=["temperature_2m", "humidity", "precipitation"],
+    reference_name="baseline_v1",
+    store_raw_values=True
+)
+manager.save_reference(profiles, "baseline_v1")
+
+# Detect drift against new data
+report = detector.detect_drift(
+    reference_name="baseline_v1",
+    current_data=production_df
+)
+
+# Check results
+print(report.summary())           # Human-readable report
+print(report.drift_detected)      # True if action needed
+print(report.overall_severity)    # NONE, LOW, MODERATE, SIGNIFICANT, SEVERE
+print(report.recommendations)     # Actionable recommendations
+
+# Serialize for logging
+report_dict = report.to_dict()
+```
+
 ---
 
 ## Testing
@@ -315,7 +353,9 @@ The foundation is complete with a working end-to-end pipeline:
 - [x] Statistical tests module (PSI, KS, JS divergence, Chi-square, Wasserstein)
 - [x] Reference data manager for baseline distributions
 - [x] Integration test validating drift detection
-- [ ] Drift detector class with MLflow integration
+- [x] DriftDetector orchestrator with severity classification
+- [x] DriftReport with summaries and recommendations
+- [ ] MLflow logging for drift reports
 - [ ] Automated drift alerts and retraining triggers
 - [ ] REST API for predictions (FastAPI)
 
@@ -355,7 +395,8 @@ domain-shift-ml-platform/
 │   │   └── pipeline.py         # Pipeline orchestration
 │   ├── drift_detection/
 │   │   ├── statistical_tests.py  # PSI, KS, JS divergence, Chi-square, Wasserstein
-│   │   └── reference_manager.py  # Reference data storage and management
+│   │   ├── reference_manager.py  # Reference data storage and management
+│   │   └── detector.py           # DriftDetector orchestrator
 │   ├── mlflow_utils/
 │   │   ├── tracking.py         # Experiment tracking
 │   │   └── registry.py         # Model registry management
@@ -369,9 +410,10 @@ domain-shift-ml-platform/
 │   ├── integration/            # End-to-end tests
 │   ├── test_weather_client.py
 │   ├── test_validator.py
-│   ├── test_feature_engineering.py 
-│   ├── test_statistical_tests.py   # Drift detection tests 
-│   └── test_reference_manager.py   # Reference manager tests
+│   ├── test_feature_engineering.py
+│   ├── test_statistical_tests.py   # Drift detection tests
+│   ├── test_reference_manager.py   # Reference manager tests
+│   └── test_detector.py            # DriftDetector tests
 ├── .gitignore                  # .gitignore
 ├── .dockerignore               # .dockerignore
 ├── docker-compose.yml          # Service orchestration
