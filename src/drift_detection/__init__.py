@@ -11,6 +11,7 @@ Key Components:
 - ReferenceProfile: Data class representing a feature's reference distribution
 - DriftReport: Complete drift analysis report with recommendations
 - DriftSeverity: Enumeration of drift severity levels
+- DriftMLflowLogger: MLflow integration for tracking drift over time
 """
 
 from src.drift_detection.statistical_tests import StatisticalTests
@@ -29,6 +30,11 @@ from src.drift_detection.detector import (
     DriftDetectorError,
     InsufficientDataError,
 )
+from src.drift_detection.mlflow_logger import (
+    DriftMLflowLogger,
+    DriftMLflowLoggerError,
+    MLflowConnectionError,
+)
 
 __all__ = [
     # Main detector
@@ -46,4 +52,8 @@ __all__ = [
     "ReferenceManagerError",
     "ReferenceNotFoundError",
     "ReferenceCorruptedError",
+    # MLflow integration
+    "DriftMLflowLogger",
+    "DriftMLflowLoggerError",
+    "MLflowConnectionError",
 ]
