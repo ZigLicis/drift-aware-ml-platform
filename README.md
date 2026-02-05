@@ -99,6 +99,7 @@ Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → Po
   - `train_model.py` - Train models with configurable hyperparameters
   - `evaluate_model.py` - Evaluate and compare model versions
   - `verify_ingestion.py` - Health checks for API, database, and MLflow
+  - `run_drift_check.py` - Production drift detection with MLflow logging
 
 - **Infrastructure**
   - Docker Compose orchestration (PostgreSQL, MLflow, App)
@@ -284,7 +285,33 @@ python scripts/verify_ingestion.py --check-db
 python scripts/verify_ingestion.py --check-mlflow
 ```
 
-### Drift Detection
+### Drift Detection CLI
+
+```bash
+# Create reference profile from historical training data
+python scripts/run_drift_check.py create-reference \
+    --name baseline_v1 --start 2024-01-01 --end 2024-12-31
+
+# Run drift check against last 7 days (168 hours)
+python scripts/run_drift_check.py check \
+    --reference baseline_v1 --window-hours 168
+
+# Run drift check against specific date range
+python scripts/run_drift_check.py check \
+    --reference baseline_v1 --start 2025-01-01 --end 2025-01-15
+
+# Run drift check with model tagging (for MLflow)
+python scripts/run_drift_check.py check \
+    --reference baseline_v1 --model-name weather-forecaster --model-version 2
+
+# Show drift detection history from MLflow
+python scripts/run_drift_check.py history --runs 10
+
+# List available reference profiles
+python scripts/run_drift_check.py list-references
+```
+
+### Drift Detection (Python API)
 
 ```python
 from src.drift_detection import DriftDetector, ReferenceManager
@@ -425,6 +452,7 @@ domain-shift-ml-platform/
 │   ├── verify_ingestion.py     # Verification tool
 │   ├── train_model.py          # Model training CLI
 │   ├── evaluate_model.py       # Model evaluation CLI
+│   ├── run_drift_check.py      # Drift detection CLI
 │   └── test_drift_day1.py      # Drift detection integration test
 ├── src/
 │   ├── data_ingestion/
