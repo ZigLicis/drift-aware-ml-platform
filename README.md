@@ -1,202 +1,216 @@
 # Domain-Shift ML Platform
 
-**An end-to-end weather prediction system with automated domain shift detection and model retraining.**
+**An end-to-end machine learning platform that detects data distribution shifts in production and enables proactive model maintenance.**
 
-![Development Status](https://img.shields.io/badge/status-active%20development-yellow)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![MLflow](https://img.shields.io/badge/mlflow-2.10.0-blue)
+![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue)
+![MLflow](https://img.shields.io/badge/mlflow-2.10-orange)
 ![PostgreSQL](https://img.shields.io/badge/postgresql-15-blue)
-
----
 
 ## Overview
 
-Machine learning models degrade in production when the data distribution shifts from what they were trained on. This platform addresses that problem by building a complete ML pipeline that:
+Machine learning models silently degrade in production when the data they encounter differs from their training data. This phenomenon, known as **domain shift** or **data drift**, is one of the leading causes of ML system failures—yet it often goes undetected until significant business impact occurs.
 
-1. **Ingests weather data** from the Open-Meteo API with validation and quality scoring
-2. **Engineers features** using temporal encoding, lag features, and rolling statistics
-3. **Trains and evaluates models** with temporal train/test splits that prevent data leakage
-4. **Tracks experiments** and manages model versions through MLflow
-5. **Detects domain shift** and triggers automated retraining (planned)
+This platform provides a complete solution for weather prediction that includes automated drift detection. It ingests weather data from the Open-Meteo API, trains regression models to predict next-day maximum temperature, and continuously monitors for distribution shifts using statistical tests like Population Stability Index (PSI) and Kolmogorov-Smirnov tests.
 
+When drift is detected, the system provides severity classifications (Low → Moderate → Significant → Severe) along with actionable recommendations. All metrics are logged to MLflow for visualization and historical analysis, creating a complete audit trail of data quality over time.
 
-### Why This Exists
+## Why This Matters
 
-During model development, I observed that a model trained on 6 months of summer/fall data achieved 0.95 R² on training data but **-62 R²** on winter test data, a failure caused by a seasonal domain shift. This project exists to detect and respond to such distribution drifts automatically.
+### The Domain Shift Problem
 
----
+Models trained on historical data assume the future will look like the past. When this assumption breaks, model performance degrades—often catastrophically.
 
-## System Architecture
+Consider these real-world scenarios:
+- A fraud model trained on pre-pandemic data fails when consumer behavior shifts
+- A demand forecasting model breaks during supply chain disruptions
+- A weather model trained on summer data produces nonsense predictions in winter
 
+### What I Found
+
+During development of this platform, I trained a temperature prediction model on 6 months of summer and fall data (June–November). The model achieved impressive metrics:
+
+| Metric | Training Performance |
+|--------|---------------------|
+| R² Score | 0.95 |
+| RMSE | 1.2°C |
+
+Then I tested it on winter data (December–January):
+
+| Metric | Winter Performance |
+|--------|-------------------|
+| R² Score | **-62** |
+| RMSE | 28°C |
+
+The model wasn't just wrong—it was worse than predicting the mean. This catastrophic failure occurred because the temperature distribution shifted dramatically between seasons, and the model had no mechanism to detect this.
+
+### Why Automated Detection is Valuable
+
+Manual monitoring doesn't scale. With dozens of features and models, drift can happen in subtle ways. This platform:
+
+1. **Detects drift automatically** using proven statistical methods
+2. **Quantifies severity** so you can prioritize responses
+3. **Provides recommendations** based on drift patterns
+4. **Logs everything** for audit trails and trend analysis
+5. **Scales** to any number of features and models
+
+## Data Flow
+
+1. **Ingestion**: Weather Client fetches hourly data from Open-Meteo API (forecast for recent data, archive for historical)
+2. **Validation**: Data Validator scores quality (completeness, range checks, anomaly detection)
+3. **Transformation**: Data Transformer adds metadata, maps schema, engineers basic features
+4. **Storage**: Data Storage upserts to PostgreSQL with conflict resolution
+5. **Training**: Feature Engineer creates 30 features, Model Trainer fits and evaluates
+6. **Drift Detection**: Reference Manager stores baselines, Drift Detector compares distributions
+7. **Tracking**: All experiments, metrics, and artifacts logged to MLflow
+
+## Quick Start
+
+```bash
+# Clone and setup
+git clone https://github.com/yourusername/domain-shift-ml-platform.git
+cd domain-shift-ml-platform
+cp .env.example .env
+
+# Start services
+docker-compose up -d
+
+# Verify services are running and healthy
+docker-compose ps
+
+# Run pipeline (in container)
+docker-compose exec app python scripts/run_ingestion.py \
+    --mode historical --start 2024-01-01 --end 2024-12-31
+
+docker-compose exec app python scripts/train_model.py --model ridge
+
+docker-compose exec app python scripts/run_drift_check.py create-reference \
+    --name baseline_v1 --start 2024-01-01 --end 2024-06-30
+
+docker-compose exec app python scripts/run_drift_check.py check \
+    --reference baseline_v1 --window-hours 168
 ```
-┌────────────────────────────────────────────────────────────┐
-│                 Domain-Shift ML Platform                   │
-├────────────────────────────────────────────────────────────┤
-│                                                            │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │  Open-Meteo │───▶│   Weather   │───▶│    Data     │     │
-│  │     API     │    │   Client    │    │  Validator  │     │
-│  └─────────────┘    └─────────────┘    └──────┬──────┘     │
-│                                               │            │
-│                                               ▼            │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │  PostgreSQL │◀───│    Data     │◀───│    Data     │     │
-│  │   Database  │    │   Storage   │    │ Transformer │     │
-│  └──────┬──────┘    └─────────────┘    └─────────────┘     │
-│         │                                                  │
-│         ▼                                                  │
-│  ┌─────────────┐    ┌─────────────┐    ┌─────────────┐     │
-│  │   Feature   │───▶│   Model     │───▶│   Model     │     │
-│  │  Engineer   │    │  Trainer    │    │  Evaluator  │     │
-│  └─────────────┘    └──────┬──────┘    └─────────────┘     │
-│                            │                               │
-│                            ▼                               │
-│  ┌─────────────┐    ┌─────────────┐                        │
-│  │   MLflow    │◀───│  Experiment │                        │
-│  │   Server    │    │   Tracker   │                        │
-│  └─────────────┘    └─────────────┘                        │
-│                                                            │
-└────────────────────────────────────────────────────────────┘
+
+### Note: One-off Container (for scripts that exit)
+
+```bash
+# Use 'run' instead of 'exec' if the app container isn't finished/running
+docker-compose run --rm app python scripts/run_ingestion.py \
+    --mode historical --start 2024-01-01 --end 2024-12-31
 ```
 
-**Data Flow:**
-```
-Open-Meteo API → WeatherAPIClient → DataValidator → DataTransformer → PostgreSQL
-                                                                          ↓
-                 MLflow ← ModelTrainer ← FeatureEngineer ← Query historical data
-```
-
----
-
-## Key Features
-
-### Implemented
-
-- **Data Ingestion Pipeline**
-  - Open-Meteo API integration with automatic archive/forecast API selection
-  - Exponential backoff retry logic with rate limit handling
-  - Data validation with quality scoring (completeness, range checks, anomaly detection)
-  - Upsert storage to PostgreSQL with connection pooling
-
-- **Feature Engineering**
-  - 30 engineered features from 5 raw weather variables
-  - Temporal encoding with cyclical (sin/cos) transformations
-  - Lag features (1h, 6h, 24h) for temperature and humidity
-  - Rolling statistics (6h/24h windows) for mean, std, min, max
-
-- **Model Training**
-  - Ridge regression baseline, Random Forest, and Gradient Boosting
-  - Temporal train/validation/test splits (prevents data leakage)
-  - Automatic model registration when metrics exceed thresholds
-
-- **MLflow Integration**
-  - Experiment tracking with parameters, metrics, and artifacts
-  - Model registry with staging/production workflows
-  - Version comparison and promotion utilities
-
-- **CLI Tools**
-  - `run_ingestion.py` - Historical, incremental, and backfill ingestion modes
-  - `train_model.py` - Train models with configurable hyperparameters
-  - `evaluate_model.py` - Evaluate and compare model versions
-  - `verify_ingestion.py` - Health checks for API, database, and MLflow
-  - `run_drift_check.py` - Production drift detection with MLflow logging
-
-- **Infrastructure**
-  - Docker Compose orchestration (PostgreSQL, MLflow, App)
-  - Structured logging with `structlog`
-  - Configuration via YAML files and environment variables
-
-- **Drift Detection**
-  - Statistical tests: PSI, KS test, Jensen-Shannon divergence, Chi-square, Wasserstein distance
-  - Reference data manager for storing/loading baseline distributions
-  - **Drift Detector** with severity classification and recommendations
-  - Configurable thresholds via `config/drift_config.yaml`
-  - `DriftReport` with human-readable summaries and JSON serialization
-  - Edge case handling (NaN, empty arrays, constant values, insufficient samples)
-  - Integration test validating summer→winter drift detection
-
-- **Drift MLflow Integration**
-  - `DriftMLflowLogger` for logging drift reports to MLflow
-  - Per-feature metrics tracking (`{feature}_psi`, `{feature}_ks_statistic`, etc.)
-  - Drift heatmap visualization (green→yellow→red severity scale)
-  - Drift timeline plots with threshold lines
-  - History retrieval for trend analysis and dashboards
-  - Graceful error handling (drift detection continues if logging fails)
-
-### TODO:
-
-- Automated retraining triggers
-- FastAPI REST endpoints for predictions
-- Model performance monitoring dashboard
-
----
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|------------|
-| Language | Python 3.10+ |
-| Database | PostgreSQL 15 |
-| ML Tracking | MLflow 2.10.0 |
-| ML Framework | scikit-learn 1.4 |
-| Data Processing | pandas 2.1, NumPy 1.26, SciPy 1.12 |
-| HTTP Client | requests + tenacity (retry) |
-| ORM | SQLAlchemy 2.0 |
-| Validation | Pydantic 2.5 |
-| Containerization | Docker Compose |
-| Logging | structlog |
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose
-- Python 3.10+ (for local development)
-
-### Quick Start
-
-1. **Clone and configure .env variables**
-   ```bash
-   git clone https://github.com/ZigLicis/drift-aware-ml-platform.git
-   cd domain-shift-ml-platform
-   cp .env.example .env
-   ```
-
-2. **Start services**
-   ```bash
-   docker-compose up -d
-   ```
-
-3. **Verify services are running**
-   ```bash
-   docker-compose ps
-   ```
-
-4. **Ingest historical data**
-   ```bash
-   python scripts/run_ingestion.py --mode historical --start 2024-01-01 --end 2025-01-15
-   ```
-
-5. **Train a model**
-   ```bash
-   python scripts/train_model.py --model ridge
-   ```
-
-6. **View experiments in MLflow**
-
-   Open http://localhost:5001
-
-### Service Ports
-
+**Service Endpoints:**
 | Service | Port | URL |
 |---------|------|-----|
-| PostgreSQL | 5432 | localhost:5432 |
+| PostgreSQL | 5432 | `localhost:5432` |
 | MLflow UI | 5001 | http://localhost:5001 |
-| Application | 8000 | http://localhost:8000 |
+
+## Architecture
+
+```
+Open-Meteo API → Weather Client → Validator → Transformer → PostgreSQL
+                                                                 ↓
+MLflow ← Drift Detector ← Reference Manager ← Feature Engineer ← Query
+```
+
+### Tech Stack
+
+| Component | Library/Framework | Purpose |
+|-----------|------------|---------|
+| Language | Python 3.10+ | Core development |
+| Database | PostgreSQL 15 | Data storage |
+| ML Tracking | MLflow 2.10 | Experiment tracking, model registry |
+| ML Framework | scikit-learn 1.4 | Model training |
+| Data Processing | pandas 2.1, NumPy 1.26 | Data manipulation |
+| Statistics | SciPy 1.12 | Statistical tests |
+| HTTP Client | requests + tenacity | API calls with retry |
+| ORM | SQLAlchemy 2.0 | Database abstraction |
+| Validation | Pydantic 2.5 | Data validation |
+| Container | Docker Compose | Service orchestration |
+| Logging | structlog | Structured logging |
 
 ---
+
+## CLI Commands
+
+### Data Ingestion
+
+```bash
+# Historical data
+python scripts/run_ingestion.py --mode historical --start 2024-01-01 --end 2024-12-31
+
+# Last 24 hours
+python scripts/run_ingestion.py --mode incremental
+
+# Backfill in batches
+python scripts/run_ingestion.py --mode backfill --start 2020-01-01 --end 2024-12-31 --batch-days 30
+```
+
+### Model Training
+
+```bash
+# Train Ridge baseline
+python scripts/train_model.py --model ridge
+
+# Train with date range
+python scripts/train_model.py --model ridge --start 2024-01-01 --end 2024-12-31
+
+# Train and promote
+python scripts/train_model.py --model ridge --promote staging
+```
+
+### Drift Detection
+
+```bash
+# Create reference baseline
+python scripts/run_drift_check.py create-reference \
+    --name baseline_v1 --start 2024-01-01 --end 2024-06-30
+
+# Check last 7 days
+python scripts/run_drift_check.py check --reference baseline_v1 --window-hours 168
+
+# Check date range
+python scripts/run_drift_check.py check \
+    --reference baseline_v1 --start 2024-11-01 --end 2024-12-31
+
+# View history
+python scripts/run_drift_check.py history --runs 10
+
+# List references
+python scripts/run_drift_check.py list-references
+```
+
+
+### Running in Docker
+
+```bash
+# Interactive shell
+docker-compose exec app bash
+
+# Single command
+docker-compose exec app python scripts/run_drift_check.py check \
+    --reference baseline_v1 --window-hours 168
+
+# Run tests
+docker-compose exec app pytest tests/ -v
+```
+
+## Drift Metrics
+
+| Metric | What It Measures | Thresholds |
+|--------|------------------|------------|
+| **PSI** | Distribution shift magnitude | < 0.1 stable, 0.1-0.2 moderate, > 0.2 action needed |
+| **KS-test** | Max CDF difference | p-value < 0.05 = significant |
+| **JS Divergence** | Symmetric distribution similarity | 0-1 scale, > 0.2 = significant |
+| **Wasserstein** | "Earth mover" distance | Scale-dependent |
+
+### Severity Levels
+
+| Level | PSI Range | Action |
+|-------|-----------|--------|
+| None/Low | < 0.1 | Continue monitoring |
+| Moderate | 0.1 - 0.15 | Investigate |
+| Significant | 0.15 - 0.2 | Plan remediation |
+| Severe | > 0.5 | Immediate retraining |
 
 ## Configuration
 
@@ -206,233 +220,27 @@ Copy `.env.example` to `.env` and configure:
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `POSTGRES_USER` | Database user | `dsml_user` |
+| `POSTGRES_USER` | Database username | `dsml_user` |
 | `POSTGRES_PASSWORD` | Database password | `dsml_password_change_me` |
 | `POSTGRES_DB` | Database name | `dsml_db` |
+| `POSTGRES_PORT` | Database port | `5432` |
+| `DATABASE_URL` | Full connection string | `postgresql://dsml_user:...@localhost:5432/dsml_db` |
 | `MLFLOW_TRACKING_URI` | MLflow server URL | `http://localhost:5001` |
-| `LOG_LEVEL` | Logging level | `INFO` |
-| `DRIFT_THRESHOLD` | Domain shift detection threshold | `0.1` |
+| `MLFLOW_PORT` | MLflow UI port | `5001` |
+| `APP_PORT` | Application port | `8000` |
+| `LOG_LEVEL` | Logging verbosity | `INFO` |
+| `DRIFT_THRESHOLD` | Default drift threshold | `0.1` |
 
-### Configuration Files
+### Config Files
 
 | File | Purpose |
 |------|---------|
-| `config/settings.yaml` | Application settings, locations, model params |
-| `config/data_config.yaml` | Ingestion settings, API config, quality thresholds |
-| `config/model_config.yaml` | Model training configuration, feature definitions |
+| `config/data_config.yaml` | API settings, location, features |
+| `config/model_config.yaml` | Model params, training settings |
+| `config/drift_config.yaml` | Drift thresholds, monitoring |
 
----
 
-## Usage
-
-### Data Ingestion
-
-```bash
-# Ingest historical data for a date range
-python scripts/run_ingestion.py --mode historical --start 2024-01-01 --end 2024-12-31
-
-# Ingest last 24 hours (incremental)
-python scripts/run_ingestion.py --mode incremental
-
-# Backfill large date ranges in batches
-python scripts/run_ingestion.py --mode backfill --start 2024-01-01 --end 2024-12-31 --batch-days 7
-
-# Health check
-python scripts/run_ingestion.py --mode health
-```
-
-### Model Training
-
-```bash
-# Train Ridge regression (baseline)
-python scripts/train_model.py --model ridge
-
-# Train Random Forest with custom parameters
-python scripts/train_model.py --model random_forest --n-estimators 100 --max-depth 10
-
-# Train and auto-promote to staging
-python scripts/train_model.py --model ridge --promote staging
-
-# Train on specific date range
-python scripts/train_model.py --model ridge --start 2024-01-01 --end 2025-01-15
-```
-
-### Model Evaluation
-
-```bash
-# Evaluate production model
-python scripts/evaluate_model.py --model weather-forecaster --stage Production
-
-# Evaluate specific version
-python scripts/evaluate_model.py --model weather-forecaster --version 1
-
-# Compare two versions
-python scripts/evaluate_model.py --model weather-forecaster --compare 1 2
-
-# View model registry info
-python scripts/evaluate_model.py --model weather-forecaster --info
-```
-
-### Verification
-
-```bash
-# Run all health checks
-python scripts/verify_ingestion.py --all
-
-# Check individual components
-python scripts/verify_ingestion.py --check-api
-python scripts/verify_ingestion.py --check-db
-python scripts/verify_ingestion.py --check-mlflow
-```
-
-### Drift Detection CLI
-
-```bash
-# Create reference profile from historical training data
-python scripts/run_drift_check.py create-reference \
-    --name baseline_v1 --start 2024-01-01 --end 2024-12-31
-
-# Run drift check against last 7 days (168 hours)
-python scripts/run_drift_check.py check \
-    --reference baseline_v1 --window-hours 168
-
-# Run drift check against specific date range
-python scripts/run_drift_check.py check \
-    --reference baseline_v1 --start 2025-01-01 --end 2025-01-15
-
-# Run drift check with model tagging (for MLflow)
-python scripts/run_drift_check.py check \
-    --reference baseline_v1 --model-name weather-forecaster --model-version 2
-
-# Show drift detection history from MLflow
-python scripts/run_drift_check.py history --runs 10
-
-# List available reference profiles
-python scripts/run_drift_check.py list-references
-```
-
-### Drift Detection (Python API)
-
-```python
-from src.drift_detection import DriftDetector, ReferenceManager
-import pandas as pd
-
-# Initialize components
-manager = ReferenceManager(storage_path="data/references")
-detector = DriftDetector(reference_manager=manager)
-
-# Create reference from training data
-profiles = manager.create_reference_from_dataframe(
-    df=training_df,
-    feature_columns=["temperature_2m", "humidity", "precipitation"],
-    reference_name="baseline_v1",
-    store_raw_values=True
-)
-manager.save_reference(profiles, "baseline_v1")
-
-# Detect drift against new data
-report = detector.detect_drift(
-    reference_name="baseline_v1",
-    current_data=production_df
-)
-
-# Check results
-print(report.summary())           # Human-readable report
-print(report.drift_detected)      # True if action needed
-print(report.overall_severity)    # NONE, LOW, MODERATE, SIGNIFICANT, SEVERE
-print(report.recommendations)     # Actionable recommendations
-
-# Serialize for logging
-report_dict = report.to_dict()
-```
-
-### Drift MLflow Logging
-
-```python
-from src.drift_detection import DriftDetector, DriftMLflowLogger, ReferenceManager
-
-# Initialize
-manager = ReferenceManager(storage_path="data/references")
-detector = DriftDetector(reference_manager=manager)
-logger = DriftMLflowLogger(
-    tracking_uri="http://localhost:5001",
-    experiment_name="drift-monitoring"
-)
-
-# Detect drift
-report = detector.detect_drift("baseline_v1", current_data=production_df)
-
-# Log to MLflow (creates run with metrics, artifacts, heatmap)
-run_id = logger.log_drift_report(
-    report,
-    model_name="weather-predictor",
-    model_version="2"
-)
-
-# Safe logging (won't fail if MLflow is down)
-run_id = logger.log_drift_report_safe(report)
-
-# Get drift history for dashboards
-history_df = logger.get_drift_history(n_runs=30)
-
-# Create timeline visualization
-timeline_path = logger.create_drift_timeline("temperature_2m", n_recent_runs=30)
-```
-
----
-
-## Testing
-
-```bash
-# Run all tests
-pytest tests/ -v
-
-# Skip network-dependent tests
-pytest tests/ -v -m "not network"
-
-# Skip integration tests (require running services)
-pytest tests/ -v -m "not integration"
-
-# Run with coverage
-pytest --cov=src tests/
-```
-
----
-
-## Project Status
-
-### Current State
-
-The foundation is complete with a working end-to-end pipeline:
-
-| Metric | Value |
-|--------|-------|
-| Data Records | 9,121 hourly observations |
-| Date Range | January 2024 - January 2025 |
-| Engineered Features | 30 |
-| Baseline Model RMSE | 3.38°C |
-| Baseline Model R² | 0.30 |
-
-### Roadmap
-
-**Drift Detection & Automation** (In Progress)
-- [x] Statistical tests module (PSI, KS, JS divergence, Chi-square, Wasserstein)
-- [x] Reference data manager for baseline distributions
-- [x] Integration test validating drift detection
-- [x] DriftDetector orchestrator with severity classification
-- [x] DriftReport with summaries and recommendations
-- [x] MLflow logging for drift reports (DriftMLflowLogger)
-- [ ] Automated drift alerts and retraining triggers
-- [ ] REST API for predictions (FastAPI)
-
-**Future**
-- Monitoring dashboard
-- Scheduled ingestion jobs
-- A/B testing infrastructure
-
----
-
-## Repository Structure
+## Project Structure
 
 ```
 domain-shift-ml-platform/
@@ -491,8 +299,89 @@ domain-shift-ml-platform/
 └── .env.example                # Environment template
 ```
 
+## Key Components
+
+### Data Ingestion (`src/data_ingestion/`)
+- `weather_client.py` — Open-Meteo API with retry logic
+- `validator.py` — Quality scoring, range validation
+- `transformer.py` — Feature engineering
+- `storage.py` — PostgreSQL with upsert
+
+### Training (`src/training/`)
+- `feature_engineering.py` — 30 features (temporal, lag, rolling)
+- `models.py` — Ridge, Random Forest, Gradient Boosting
+- `trainer.py` — Training with MLflow tracking
+
+### Drift Detection (`src/drift_detection/`)
+- `statistical_tests.py` — PSI, KS, JS divergence, Wasserstein
+- `reference_manager.py` — Store/load reference profiles
+- `detector.py` — Orchestrator with severity classification
+- `mlflow_logger.py` — Log drift reports to MLflow
+
+## Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| `DATABASE_URL not set` | Check `.env` file exists and has `DATABASE_URL` |
+| `Connection refused :5432` | Run `docker-compose up -d postgres` |
+| `MLflow connection failed` | Run `docker-compose up -d mlflow` |
+| `No data found` | Run ingestion first |
+| `Reference not found` | Create reference with `create-reference` command |
+
+## Project Status
+
+### Current State
+
+The foundation is complete with a working end-to-end pipeline:
+
+| Metric | Value |
+|--------|-------|
+| Data Records | 9,121 hourly observations |
+| Date Range | January 2024 - January 2025 |
+| Engineered Features | 30 |
+| Baseline Model RMSE | 3.38°C |
+| Baseline Model R² | 0.30 |
+
+### Roadmap
+
+**Drift Detection & Automation** (In Progress)
+- [x] Statistical tests module (PSI, KS, JS divergence, Chi-square, Wasserstein)
+- [x] Reference data manager for baseline distributions
+- [x] Integration test validating drift detection
+- [x] DriftDetector orchestrator with severity classification
+- [x] DriftReport with summaries and recommendations
+- [x] MLflow logging for drift reports (DriftMLflowLogger)
+- [ ] Automated drift alerts and retraining triggers
+- [ ] REST API for predictions (FastAPI)
+
+**Future**
+- Monitoring dashboard
+- Scheduled ingestion jobs
+- A/B testing infrastructure
+
 ---
 
-## License
+## Development
 
-This project is for demonstration and educational purposes.
+```bash
+# Tests
+pytest tests/ -v
+pytest tests/ --cov=src
+
+# Code quality
+black src/ tests/ scripts/
+ruff check src/ tests/ scripts/
+mypy src/
+```
+
+## Why This Exists
+
+A model trained on summer data (R² = 0.95) and tested on winter data (R² = **-62**) failed catastrophically due to seasonal domain shift. This platform detects such shifts before they cause problems.
+
+### Key Takeaways
+
+1. **Representative training data is critical** — Models only know what they've seen
+2. **Temporal splits prevent leakage** — Random splits for time series data are wrong
+3. **Monitoring is not optional** — Production models need continuous validation
+4. **Automated detection scales** — Manual review doesn't work for many features/models
+5. **Severity matters** — Not all drift requires immediate action
